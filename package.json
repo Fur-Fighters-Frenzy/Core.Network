@@ -1,0 +1,17 @@
+{
+  "name": "validosik.core.network",
+  "displayName": "Core Network",
+  "version": "0.0.1",
+  "unity": "6000.0",
+  "description": "Small, transport- and engine-agnostic networking core: PlayerId, channel abstraction, client/server transport interfaces, and optional FishNet/LiteNetLib adapters with a minimal handshake DTO.",
+  "author": { "name": "validosik" },
+  "keywords": [
+    "networking",
+    "transport",
+    "clientserver",
+    "channels",
+    "handshake",
+    "adapters",
+    "lightweight"
+  ]
+}
