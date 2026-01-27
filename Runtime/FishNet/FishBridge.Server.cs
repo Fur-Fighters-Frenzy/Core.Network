@@ -24,7 +24,19 @@ namespace Validosik.Core.Network.FishNet
         [Server]
         public void Send(PlayerId to, ReadOnlySpan<byte> raw, ChannelKind ch = ChannelKind.ReliableOrdered)
         {
-            var connection = _registry.GetPlayerForConnection(to);
+            if (!_registry.TryGetConnection(to, out var connection))
+            {
+                return;
+            }
+
+            Rpc_ToClient(connection, raw.ToArray(), FishChannelMap.ToFish(ch));
+        }
+
+        /// Send: Server -> one Client
+        [Server]
+        private void SendRaw(NetworkConnection connection, ReadOnlySpan<byte> raw,
+            ChannelKind ch = ChannelKind.ReliableOrdered)
+        {
             if (connection == null)
             {
                 return;
@@ -39,9 +51,28 @@ namespace Validosik.Core.Network.FishNet
         {
             Rpc_ToAll(raw.ToArray(), FishChannelMap.ToFish(ch));
         }
-        
+
         [Server]
-        public void BroadcastExcept(PlayerId[] except, ReadOnlySpan<byte> raw, ChannelKind ch = ChannelKind.ReliableOrdered)
+        public void BroadcastExcept(PlayerId except, ReadOnlySpan<byte> raw,
+            ChannelKind ch = ChannelKind.ReliableOrdered)
+        {
+            var channel = FishChannelMap.ToFish(ch);
+            var payload = raw.ToArray();
+
+            foreach (var (connection, pid) in _registry.AllConnections)
+            {
+                if (pid == except)
+                {
+                    continue;
+                }
+
+                Rpc_ToClient(connection, payload, channel);
+            }
+        }
+
+        [Server]
+        public void BroadcastExcept(PlayerId[] except, ReadOnlySpan<byte> raw,
+            ChannelKind ch = ChannelKind.ReliableOrdered)
         {
             if (except == null || except.Length == 0)
             {
@@ -59,11 +90,9 @@ namespace Validosik.Core.Network.FishNet
             var channel = FishChannelMap.ToFish(ch);
             var payload = raw.ToArray();
 
-            foreach (var (_, connection) in NetworkManager.ServerManager.Clients)
+            foreach (var (connection, pid) in _registry.AllConnections)
             {
-                var playerId = _registry.MapConnectionToPlayer(connection).pid;
-
-                if (skip.Contains(playerId.Value))
+                if (skip.Contains(pid))
                 {
                     continue;
                 }
@@ -79,11 +108,12 @@ namespace Validosik.Core.Network.FishNet
 
         public void Disconnect(PlayerId pid)
         {
-            var conn = _registry.GetPlayerForConnection(pid);
-            if (conn != null)
+            if (!_registry.TryGetConnection(pid, out var connection))
             {
-                conn.Disconnect(true); // TODO: maybe sending pending data here
+                return;
             }
+
+            connection.Disconnect(true); // TODO: maybe sending pending data here
         }
 
         /// Receive: Client -> Server
@@ -94,10 +124,34 @@ namespace Validosik.Core.Network.FishNet
             OnClientMessage?.Invoke(pid, data, FishChannelMap.FromFish(channel));
         }
 
+        /// Receive: Client -> Server
+        [ServerRpc(RequireOwnership = false)]
+        private void Rpc_HandshakeFromClient(byte[] _, NetworkConnection sender = null)
+        {
+            if (!_registry.TryGetPid(sender, out var pid)
+                || !_registry.TryGetToken(pid, out var token))
+            {
+                return;
+            }
+
+            var handshake = new HandshakeDto(
+                0,
+                0,
+                pid,
+                token
+            );
+            var payload = handshake.ToBytes();
+            var envelope = NetEnvelope.Pack((ushort)ServerMsgType.Handshake, payload);
+            Send(pid, envelope);
+
+            OnClientConnected?.Invoke(pid);
+        }
+
         public override void OnStartServer()
         {
             base.OnStartServer();
             _registry = new FishnetPlayerMapping();
+
             if (base.NetworkManager == null)
             {
                 return;
@@ -140,17 +194,17 @@ namespace Validosik.Core.Network.FishNet
             else if (args.ConnectionState == RemoteConnectionState.Started)
             {
                 var (pid, token) = _registry.MapConnectionToPlayer(connection);
-                var handshake = new HandshakeDto(
-                    0,
-                    0,
-                    pid,
-                    token
-                );
-                var payload = handshake.ToBytes();
-                var envelope = NetEnvelope.Pack(0, payload);
-                Send(pid, envelope);
+                // Sorry bro connection doesn't here anymore. Cause client subscribes to handshake after it sends here 
+            }
+        }
 
-                OnClientConnected?.Invoke(pid);
+        public ushort Tick { get; private set; }
+
+        public void NextTick()
+        {
+            unchecked
+            {
+                ++Tick;
             }
         }
     }

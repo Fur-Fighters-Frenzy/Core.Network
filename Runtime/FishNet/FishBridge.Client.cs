@@ -33,6 +33,11 @@ namespace Validosik.Core.Network.FishNet
             OnServerMessage?.Invoke(data, FishChannelMap.FromFish(channel));
         }
 
+        /// Send: Client -> Serve
+        [Client]
+        public void SendHandshake() =>
+            Rpc_HandshakeFromClient(Array.Empty<byte>());
+
         private void OnConnectedToServer()
         {
             OnConnectedAsClient?.Invoke();

@@ -15,11 +15,12 @@ namespace Validosik.Core.Network.Lite
         public event Action<PlayerId> OnClientDisconnected;
         public event Action<PlayerId> OnClientConnected;
 
-        private readonly NetManager                    _server;
-        private readonly Dictionary<PlayerId, NetPeer> _peers = new();
-        private readonly LiteChannelMap                _map;
-        private readonly string                        _connectionKey;
-        private          bool                          _disposed;
+        private readonly NetManager     _server;
+        private readonly LiteChannelMap _map;
+        private readonly string         _connectionKey;
+        private          bool           _disposed;
+
+        private LitePlayerMapping _registry;
 
         public LiteServerAdapter(int port, LiteChannelMap map = null, string connectionKey = "proto")
         {
@@ -36,6 +37,7 @@ namespace Validosik.Core.Network.Lite
             }
 
             _connectionKey = connectionKey;
+            _registry = new LitePlayerMapping();
         }
 
         public void Send(PlayerId to, ReadOnlySpan<byte> raw, ChannelKind ch = ChannelKind.ReliableOrdered)
@@ -45,7 +47,7 @@ namespace Validosik.Core.Network.Lite
                 return;
             }
 
-            if (!_peers.TryGetValue(to, out var peer))
+            if (!_registry.TryGetConnection(to, out var peer))
             {
                 return;
             }
@@ -62,12 +64,34 @@ namespace Validosik.Core.Network.Lite
             }
 
             var (delivery, channel) = _map.ToLite(ch);
-            foreach (var peer in _peers.Values)
+            foreach (var (peer, _) in _registry.AllConnections)
             {
                 peer.Send(raw.ToArray(), channel, delivery);
             }
         }
 
+        public void BroadcastExcept(PlayerId except, ReadOnlySpan<byte> raw,
+            ChannelKind ch = ChannelKind.ReliableOrdered)
+        {
+            if (_disposed)
+            {
+                return;
+            }
+            
+            var (delivery, channel) = _map.ToLite(ch);
+            var bytes = raw.ToArray();
+
+            foreach (var (peer, pid) in _registry.AllConnections)
+            {
+                if (pid == except.Value)
+                {
+                    continue;
+                }
+
+                peer.Send(bytes, channel, delivery);
+            }
+        }
+        
         public void BroadcastExcept(PlayerId[] except, ReadOnlySpan<byte> raw,
             ChannelKind ch = ChannelKind.ReliableOrdered)
         {
@@ -91,7 +115,7 @@ namespace Validosik.Core.Network.Lite
             var (delivery, channel) = _map.ToLite(ch);
             var bytes = raw.ToArray();
 
-            foreach (var (pid, peer) in _peers)
+            foreach (var (peer, pid) in _registry.AllConnections)
             {
                 if (skip.Contains(pid))
                 {
@@ -114,26 +138,22 @@ namespace Validosik.Core.Network.Lite
 
         public void Disconnect(PlayerId pid)
         {
-            if (_peers.TryGetValue(pid, out var peer))
+            if (_registry.TryGetConnection(pid, out var peer))
             {
                 peer.Disconnect();
             }
         }
 
-
         // --- INetEventListener ---
         public void OnPeerConnected(NetPeer peer)
         {
-            // TODO: create peer to PlayerId mapping
-            var pid = (byte)peer.Id;
-            _peers[pid] = peer;
-            OnClientConnected?.Invoke(pid);
+            var (pid, token) = _registry.MapConnectionToPlayer(peer);
+            // OnClientConnected moved from here to Handshake sending logic 
         }
 
         public void OnPeerDisconnected(NetPeer peer, DisconnectInfo disconnectInfo)
         {
-            var pid = (byte)peer.Id;
-            _peers.Remove(pid);
+            var pid = _registry.ReleaseConnection(peer);
             OnClientDisconnected?.Invoke(pid);
         }
 
@@ -148,7 +168,30 @@ namespace Validosik.Core.Network.Lite
             var data = reader.GetRemainingBytes();
             reader.Recycle();
 
-            var pid = new PlayerId((byte)peer.Id);
+            if (!_registry.TryGetPid(peer, out var pid))
+            {
+                if (!HandshakeDto.TryFromBytes(data, out var handshakeDto))
+                {
+                    return;
+                }
+
+                var (playerId, token) = _registry.MapConnectionToPlayer(peer);
+                pid = playerId;
+
+                var handshake = new HandshakeDto(
+                    0,
+                    0,
+                    pid,
+                    token
+                );
+                var payload = handshake.ToBytes();
+                var envelope = NetEnvelope.Pack((ushort)ServerMsgType.Handshake, payload);
+                Send(pid, envelope);
+
+                OnClientConnected?.Invoke(pid);
+                return;
+            }
+
             var kind = _map.FromLite(deliveryMethod, channelNumber);
 
             OnClientMessage?.Invoke(pid, data, kind);
@@ -177,6 +220,17 @@ namespace Validosik.Core.Network.Lite
 
             _disposed = true;
             _server.Stop();
+            _registry = null;
+        }
+
+        public ushort Tick { get; private set; }
+
+        public void NextTick()
+        {
+            unchecked
+            {
+                ++Tick;
+            }
         }
     }
 }
