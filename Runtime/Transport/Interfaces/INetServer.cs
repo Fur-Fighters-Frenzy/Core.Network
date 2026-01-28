@@ -3,7 +3,7 @@ using Validosik.Core.Network.Types;
 
 namespace Validosik.Core.Network.Transport.Interfaces
 {
-    public interface INetServer
+    public interface INetServer : INetTickableServer
     {
         event Action<PlayerId> OnClientDisconnected;
         event Action<PlayerId> OnClientConnected;
