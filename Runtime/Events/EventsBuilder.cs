@@ -9,7 +9,7 @@ namespace Validosik.Core.Network.Events
 {
     /// TLV buffer: [u16 count] { [u16 kind][u16 len][blob] }*
     public class EventsBuilder<TKind, TCodec, TEnvelope> : IDisposable
-        where TKind : struct
+        where TKind : unmanaged, Enum
         where TCodec : struct, IKindCodec<TKind>
         where TEnvelope : struct, IEnvelopeFactory
     {

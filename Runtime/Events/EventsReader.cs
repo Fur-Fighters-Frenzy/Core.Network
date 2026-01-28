@@ -5,7 +5,7 @@ namespace Validosik.Core.Network.Events
 {
     /// TLV reader: [u16 count] { [u16 kind][u16 len][blob] }*
     public ref struct EventsReader<TKind, TCodec>
-        where TKind : struct
+        where TKind : unmanaged, Enum
         where TCodec : struct, IKindCodec<TKind>
     {
         private readonly ReadOnlySpan<byte> _span;

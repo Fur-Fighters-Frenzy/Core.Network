@@ -1,4 +1,5 @@
-﻿using Validosik.Core.Network.Types;
+﻿using Validosik.Core.Network.Dto;
+using Validosik.Core.Network.Types;
 
 namespace Validosik.Core.Network.Events.Bucket
 {
