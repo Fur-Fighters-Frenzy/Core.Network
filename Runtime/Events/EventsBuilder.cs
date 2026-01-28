@@ -20,6 +20,9 @@ namespace Validosik.Core.Network.Events
         private readonly TCodec    _codec;
         private readonly TEnvelope _env;
 
+        private          byte[]    _envBuffer;
+        private          int       _envWritten;
+
         public EventsBuilder(int initialCapacity = 256)
         {
             _buffer = ArrayPool<byte>.Shared.Rent(Math.Max(initialCapacity, HeaderReserve));
@@ -27,6 +30,9 @@ namespace Validosik.Core.Network.Events
             _count = 0;
             _codec = default;
             _env = default;
+
+            _envBuffer = ArrayPool<byte>.Shared.Rent(Math.Max(initialCapacity + 4, 64));
+            _envWritten = 0;
         }
 
         /// <summary>Clears current batch.</summary>
@@ -123,18 +129,31 @@ namespace Validosik.Core.Network.Events
             return new ReadOnlySpan<byte>(_buffer, 0, _written);
         }
 
-        public byte[] BuildEnvelope() => _env.Make(BuildPayload());
+        private ReadOnlySpan<byte> BuildEnvelopeSpan()
+        {
+            var payload = BuildPayload();
 
-        public virtual void Send(INetServer server, PlayerId to) => server.Send(to, BuildEnvelope());
-        public virtual void Broadcast(INetServer server) => server.Broadcast(BuildEnvelope());
+            var need = _env.GetByteCount(payload.Length);
+            EnsureEnvelope(need);
+
+            if (!_env.TryWrite(payload, _envBuffer.AsSpan(0, need), out _envWritten) || _envWritten <= 0)
+            {
+                throw new InvalidOperationException("Failed to build envelope.");
+            }
+
+            return new ReadOnlySpan<byte>(_envBuffer, 0, _envWritten);
+        }
+
+        public virtual void Send(INetServer server, PlayerId to) => server.Send(to, BuildEnvelopeSpan());
+        public virtual void Broadcast(INetServer server) => server.Broadcast(BuildEnvelopeSpan());
 
         public virtual void BroadcastExcept(INetServer server, PlayerId except) =>
-            server.BroadcastExcept(except, BuildEnvelope());
-        
-        public virtual void BroadcastExcept(INetServer server, params PlayerId[] except) =>
-            server.BroadcastExcept(except, BuildEnvelope());
+            server.BroadcastExcept(except, BuildEnvelopeSpan());
 
-        public virtual void Send(INetClient client) => client.Send(BuildEnvelope());
+        public virtual void BroadcastExcept(INetServer server, params PlayerId[] except) =>
+            server.BroadcastExcept(except, BuildEnvelopeSpan());
+
+        public virtual void Send(INetClient client) => client.Send(BuildEnvelopeSpan());
 
         public void Dispose()
         {
@@ -142,6 +161,12 @@ namespace Validosik.Core.Network.Events
             {
                 ArrayPool<byte>.Shared.Return(_buffer);
                 _buffer = null;
+            }
+
+            if (_envBuffer != null)
+            {
+                ArrayPool<byte>.Shared.Return(_envBuffer);
+                _envBuffer = null;
             }
         }
 
@@ -157,6 +182,19 @@ namespace Validosik.Core.Network.Events
             Buffer.BlockCopy(_buffer, 0, newBuffer, 0, _written);
             ArrayPool<byte>.Shared.Return(_buffer);
             _buffer = newBuffer;
+        }
+
+        private void EnsureEnvelope(int need)
+        {
+            if (need <= _envBuffer.Length)
+            {
+                return;
+            }
+
+            var newSize = Math.Max(_envBuffer.Length * 2, need);
+            var newBuffer = ArrayPool<byte>.Shared.Rent(newSize);
+            ArrayPool<byte>.Shared.Return(_envBuffer);
+            _envBuffer = newBuffer;
         }
     }
 }
