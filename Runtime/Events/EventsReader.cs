@@ -3,7 +3,7 @@ using System.Buffers.Binary;
 
 namespace Validosik.Core.Network.Events
 {
-    /// TLV reader: [u16 count] { [u8 kind][u16 len][blob] }*
+    /// TLV reader: [u16 count] { [u16 kind][u16 len][blob] }*
     public ref struct EventsReader<TKind, TCodec>
         where TKind : struct
         where TCodec : struct, IKindCodec<TKind>
@@ -35,13 +35,17 @@ namespace Validosik.Core.Network.Events
             blob = default;
 
             if (_remain == 0) return false;
-            if (_off + 3 > _span.Length)
+            if (_off + 4 > _span.Length)
             {
                 _remain = 0;
                 return false;
             }
 
-            kind = _codec.FromByte(_span[_off++]);
+            var rawKind = BinaryPrimitives.ReadUInt16LittleEndian(_span.Slice(_off, 2));
+            _off += 2;
+
+            kind = _codec.FromByte(rawKind);
+
             var len = BinaryPrimitives.ReadUInt16LittleEndian(_span.Slice(_off, 2));
             _off += 2;
 

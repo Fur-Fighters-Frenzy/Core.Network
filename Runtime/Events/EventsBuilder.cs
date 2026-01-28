@@ -7,7 +7,7 @@ using Validosik.Core.Network.Events.Bucket;
 
 namespace Validosik.Core.Network.Events
 {
-    /// TLV buffer: [u16 count] { [u8 kind][u16 len][blob] }*
+    /// TLV buffer: [u16 count] { [u16 kind][u16 len][blob] }*
     public class EventsBuilder<TKind, TCodec, TEnvelope> : IDisposable
         where TKind : struct
         where TCodec : struct, IKindCodec<TKind>
@@ -39,11 +39,14 @@ namespace Validosik.Core.Network.Events
 
         public EventsBuilder<TKind, TCodec, TEnvelope> AddRaw(TKind kind, ReadOnlySpan<byte> payload)
         {
-            Ensure(1 + 2 + payload.Length);
+            Ensure(2 + 2 + payload.Length);
 
-            _buffer[_written++] = _codec.ToByte(kind);
+            BinaryPrimitives.WriteUInt16LittleEndian(_buffer.AsSpan(_written, 2), _codec.ToByte(kind));
+            _written += 2;
+
             BinaryPrimitives.WriteUInt16LittleEndian(_buffer.AsSpan(_written, 2), (ushort)payload.Length);
             _written += 2;
+
             payload.CopyTo(_buffer.AsSpan(_written));
             _written += payload.Length;
             ++_count;

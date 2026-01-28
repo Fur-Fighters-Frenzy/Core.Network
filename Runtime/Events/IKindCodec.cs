@@ -2,7 +2,7 @@
 {
     public interface IKindCodec<TKind> where TKind : struct
     {
-        byte ToByte(TKind k);
-        TKind FromByte(byte b);
+        ushort ToByte(TKind k);
+        TKind FromByte(ushort b);
     }
 }
