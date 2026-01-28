@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace App.Network.Core.Mapping
+namespace Validosik.Core.Network.Mapping
 {
     internal sealed class TokenRegistry : BytePlayerRegistry<Guid> { }
 }

@@ -1,4 +1,4 @@
-﻿namespace Validosik.Core.Events
+﻿namespace Validosik.Core.Network.Events
 {
     public interface IKindCodec<TKind> where TKind : struct
     {

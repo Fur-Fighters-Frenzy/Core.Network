@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using App.Network.Core.Types;
+using Validosik.Core.Network.Types;
 
-namespace App.Network.Core.Mapping
+namespace Validosik.Core.Network.Mapping
 {
     internal abstract class PlayerConnectionMapping<T, TConnectionRegistry, TTokenRegistry>
         where TConnectionRegistry : BytePlayerRegistry<T>, new()

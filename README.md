@@ -4,7 +4,7 @@ Small, transport- and engine-agnostic networking core for Unity:
 - Primitive IDs (`PlayerId`)
 - Unified channel abstraction (`ChannelKind`)
 - Minimal transport interfaces (`INetClient`, `INetServer`)
-- Optional adapters for **FishNet** and **LiteNetLib**
+- Optional adapters for [**FishNet**](https://github.com/Fur-Fighters-Frenzy/Core.Network.FishNet) and [**LiteNetLib**](https://github.com/Fur-Fighters-Frenzy/Core.Network.LiteNetLib)
 - Tiny binary handshake DTO (`HandshakeDto`)
 
 > **Status:** WIP
@@ -30,10 +30,10 @@ Unity networking stacks love to dictate your architecture. This package does the
 - `Sequenced` (relevant for LiteNetLib; on FishNet it’s mapped to best-effort behavior)
 
 ### Adapters
-- **LiteNetLib**
+- [**LiteNetLib**](https://github.com/Fur-Fighters-Frenzy/Core.Network.LiteNetLib)
     - `LiteClientAdapter`, `LiteServerAdapter`
     - `LiteChannelMap` for `(DeliveryMethod, channelNumber) <-> ChannelKind` mapping
-- **FishNet**
+- [**FishNet**](https://github.com/Fur-Fighters-Frenzy/Core.Network.FishNet)
     - `FishBridge` (partial): client/server bridge via RPC
     - `FishChannelMap` (`Reliable/Unreliable` <-> `ChannelKind`)
 
@@ -60,6 +60,7 @@ server.OnClientMessage += (pid, data, ch) => { /* decode envelope/DTO */ };
 
 // In your tick/update loop:
 server.Poll(); // LiteNetLib needs Poll; FishNet is a no-op here
+```
 
 ---
 

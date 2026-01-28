@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace App.Network.Core.Mapping
+namespace Validosik.Core.Network.Mapping
 {
     internal abstract class BytePlayerRegistry<T>
     {

@@ -5,6 +5,9 @@
   "unity": "6000.0",
   "description": "Small, transport- and engine-agnostic networking core: PlayerId, channel abstraction, client/server transport interfaces, and optional FishNet/LiteNetLib adapters with a minimal handshake DTO.",
   "author": { "name": "validosik" },
+  "dependencies": {
+    "validosik.core.buckets": "0.0.1"
+  },
   "keywords": [
     "networking",
     "transport",

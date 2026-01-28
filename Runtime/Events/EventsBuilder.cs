@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Buffers;
 using System.Buffers.Binary;
-using Validosik.Core.Transport.Interfaces;
-using Validosik.Core.Types;
-using App.Network.Gameplay.Events.Bucket;
+using Validosik.Core.Network.Transport.Interfaces;
+using Validosik.Core.Network.Types;
+using Validosik.Core.Network.Events.Bucket;
 
-namespace Validosik.Core.Events
+namespace Validosik.Core.Network.Events
 {
     /// TLV buffer: [u16 count] { [u8 kind][u16 len][blob] }*
     public class EventsBuilder<TKind, TCodec, TEnvelope> : IDisposable

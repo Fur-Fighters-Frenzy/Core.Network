@@ -1,4 +1,4 @@
-﻿namespace App.Network.Core.Transport.Interfaces
+﻿namespace Validosik.Core.Network.Transport.Interfaces
 {
     public interface INetTickableServer
     {

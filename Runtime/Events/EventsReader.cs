@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 
-namespace Validosik.Core.Events
+namespace Validosik.Core.Network.Events
 {
     /// TLV reader: [u16 count] { [u8 kind][u16 len][blob] }*
     public ref struct EventsReader<TKind, TCodec>

@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Validosik.Core.Events
+namespace Validosik.Core.Network.Events
 {
     public interface IEnvelopeFactory
     {
