@@ -1,9 +1,7 @@
 {
     "name": "Validosik.Core.Network",
     "rootNamespace": "Validosik.Core.Network",
-    "references": [
-        "Validosik.Core.Buckets"
-    ],
+    "references": [],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
