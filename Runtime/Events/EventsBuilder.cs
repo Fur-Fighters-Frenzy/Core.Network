@@ -4,6 +4,7 @@ using System.Buffers.Binary;
 using Validosik.Core.Network.Transport.Interfaces;
 using Validosik.Core.Network.Types;
 using Validosik.Core.Network.Events.Bucket;
+using Validosik.Core.Network.Transport;
 
 namespace Validosik.Core.Network.Events
 {
@@ -13,15 +14,15 @@ namespace Validosik.Core.Network.Events
         where TCodec : struct, IKindCodec<TKind>
         where TEnvelope : struct, IEnvelopeFactory
     {
-        private const    int       HeaderReserve = 2;
-        private          byte[]    _buffer;
-        private          int       _written;
-        private          ushort    _count;
-        private readonly TCodec    _codec;
+        private const int HeaderReserve = 2;
+        private byte[] _buffer;
+        private int _written;
+        private ushort _count;
+        private readonly TCodec _codec;
         private readonly TEnvelope _env;
 
-        private          byte[]    _envBuffer;
-        private          int       _envWritten;
+        private byte[] _envBuffer;
+        private int _envWritten;
 
         public EventsBuilder(int initialCapacity = 256)
         {
@@ -144,16 +145,22 @@ namespace Validosik.Core.Network.Events
             return new ReadOnlySpan<byte>(_envBuffer, 0, _envWritten);
         }
 
-        public virtual void Send(INetServer server, PlayerId to) => server.Send(to, BuildEnvelopeSpan());
-        public virtual void Broadcast(INetServer server) => server.Broadcast(BuildEnvelopeSpan());
+        public virtual void Send(INetServer server, PlayerId to, ChannelKind ch = ChannelKind.ReliableOrdered) =>
+            server.Send(to, BuildEnvelopeSpan(), ch);
 
-        public virtual void BroadcastExcept(INetServer server, PlayerId except) =>
-            server.BroadcastExcept(except, BuildEnvelopeSpan());
+        public virtual void Broadcast(INetServer server, ChannelKind ch = ChannelKind.ReliableOrdered) =>
+            server.Broadcast(BuildEnvelopeSpan(), ch);
 
-        public virtual void BroadcastExcept(INetServer server, params PlayerId[] except) =>
-            server.BroadcastExcept(except, BuildEnvelopeSpan());
+        public virtual void BroadcastExcept(INetServer server, PlayerId except,
+            ChannelKind ch = ChannelKind.ReliableOrdered) =>
+            server.BroadcastExcept(except, BuildEnvelopeSpan(), ch);
 
-        public virtual void Send(INetClient client) => client.Send(BuildEnvelopeSpan());
+        public virtual void BroadcastExcept(INetServer server, ChannelKind ch = ChannelKind.ReliableOrdered,
+            params PlayerId[] except) =>
+            server.BroadcastExcept(except, BuildEnvelopeSpan(), ch);
+
+        public virtual void Send(INetClient client, ChannelKind ch = ChannelKind.ReliableOrdered) =>
+            client.Send(BuildEnvelopeSpan(), ch);
 
         public void Dispose()
         {
